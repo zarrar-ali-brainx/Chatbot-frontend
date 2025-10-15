@@ -15,6 +15,7 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -40,12 +41,12 @@ api.interceptors.response.use(
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
     const response = await api.post('/auth/login', credentials);
-    return response.data;
+    return response.data as AuthResponse;
   },
 
   register: async (userData: RegisterRequest): Promise<AuthResponse> => {
     const response = await api.post('/auth/register', userData);
-    return response.data;
+    return response.data as AuthResponse;
   },
 
   getProfile: async () => {
@@ -60,8 +61,8 @@ export const chatService = {
     return response.data;
   },
 
-  sendCustomMessage: async (data: ChatRequest) => {
-    const response = await api.post('/chat/custom', data);
+  sendRagMessage: async (data: ChatRequest) => {
+    const response = await api.post('/chat/rag', data);
     return response.data;
   },
 

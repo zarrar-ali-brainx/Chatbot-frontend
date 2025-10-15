@@ -54,22 +54,24 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
       const response = chatType === 'general' 
         ? await chatService.sendGeneralMessage(request)
-        : await chatService.sendCustomMessage(request);
+        : await chatService.sendRagMessage(request);
+
+        const responseData = response as { response: string; sessionId: number; sources?: any[]};
 
       // Add assistant response
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: response.message,
+        content: responseData.response,
         timestamp: new Date().toISOString(),
-        metadata: response.metadata,
+        metadata: responseData.sources,
       };
       
       setMessages(prev => [...prev, assistantMessage]);
       
       // Update current session if new one was created
-      if (response.sessionId && !currentSession) {
+      if (responseData.sessionId && !currentSession) {
         setCurrentSession({
-          id: response.sessionId,
+          id: responseData.sessionId,
           chat_type: chatType,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -87,7 +89,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const loadSessions = async () => {
     try {
       const response = await chatService.getSessions();
-      setSessions(response);
+      setSessions(response as ChatSession[]);
     } catch (error) {
       console.error('Error loading sessions:', error);
     }
@@ -96,7 +98,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const loadSessionMessages = async (sessionId: number) => {
     try {
       const response = await chatService.getSessionMessages(sessionId);
-      setMessages(response);
+      setMessages(response as ChatMessage[]);
     } catch (error) {
       console.error('Error loading session messages:', error);
     }

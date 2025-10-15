@@ -16,7 +16,7 @@ const Documents: React.FC = () => {
     setLoading(true);
     try {
       const response = await documentService.getDocuments();
-      setDocuments(response);
+      setDocuments(response as Document[]);
     } catch (err: any) {
       setError('Failed to load documents');
     } finally {
@@ -46,7 +46,7 @@ const Documents: React.FC = () => {
 
     try {
       const response = await documentService.uploadDocument(file);
-      setDocuments(prev => [response, ...prev]);
+      setDocuments(prev => [response as Document, ...prev]);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Upload failed');

@@ -38,7 +38,6 @@ export interface ChatSession {
 
 export interface Document {
   id: number;
-  filename: string;
   original_name: string;
   file_type: string;
   file_size: number;
