@@ -6,7 +6,10 @@ const Chat: React.FC = () => {
   const [chatType, setChatType] = useState<'general' | 'custom'>('general');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { messages, loading, sendMessage, clearMessages } = useChat();
+  const { loading, sendMessage, getMessagesForChatType, clearMessagesForChatType } = useChat();
+
+  // Get messages for current chat type
+  const currentMessages = getMessagesForChatType(chatType);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -14,7 +17,7 @@ const Chat: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [currentMessages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +29,11 @@ const Chat: React.FC = () => {
   };
 
   const handleClearChat = () => {
-    clearMessages();
+    clearMessagesForChatType(chatType);
+  };
+
+  const handleChatTypeChange = (newChatType: 'general' | 'custom') => {
+    setChatType(newChatType);
   };
 
   return (
@@ -38,7 +45,7 @@ const Chat: React.FC = () => {
             <h1 className="text-xl font-semibold text-gray-900">AI Chat</h1>
             <div className="flex space-x-2">
               <button
-                onClick={() => setChatType('general')}
+                onClick={() => handleChatTypeChange('general')}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                   chatType === 'general'
                     ? 'bg-primary-100 text-primary-700'
@@ -48,7 +55,7 @@ const Chat: React.FC = () => {
                 General Chat
               </button>
               <button
-                onClick={() => setChatType('custom')}
+                onClick={() => handleChatTypeChange('custom')}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                   chatType === 'custom'
                     ? 'bg-primary-100 text-primary-700'
@@ -68,9 +75,9 @@ const Chat: React.FC = () => {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 ? (
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {currentMessages.length === 0 ? (
           <div className="text-center text-gray-500 mt-8">
             <p className="text-lg">Start a conversation with the AI</p>
             <p className="text-sm mt-2">
@@ -80,8 +87,8 @@ const Chat: React.FC = () => {
               }
             </p>
           </div>
-        ) : (
-          messages.map((msg, index) => (
+          ) : (
+            currentMessages.map((msg, index) => (
             <div
               key={index}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}

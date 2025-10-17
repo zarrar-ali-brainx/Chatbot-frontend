@@ -46,6 +46,6 @@ export interface Document {
 
 export interface ChatRequest {
   message: string;
-  sessionId?: number;
+  sessionId?: string;
   chatType: 'general' | 'custom';
 }

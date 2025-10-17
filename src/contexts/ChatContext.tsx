@@ -12,6 +12,8 @@ interface ChatContextType {
   loadSessionMessages: (sessionId: number) => Promise<void>;
   createNewSession: (chatType: 'general' | 'custom') => void;
   clearMessages: () => void;
+  getMessagesForChatType: (chatType: 'general' | 'custom') => ChatMessage[];
+  clearMessagesForChatType: (chatType: 'general' | 'custom') => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -33,6 +35,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // Separate message states for different chat types
+  const [generalMessages, setGeneralMessages] = useState<ChatMessage[]>([]);
+  const [ragMessages, setRagMessages] = useState<ChatMessage[]>([]);
 
   const sendMessage = async (message: string, chatType: 'general' | 'custom') => {
     setLoading(true);
@@ -43,12 +49,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       content: message,
       timestamp: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    
+    // Add to appropriate message state based on chat type
+    if (chatType === 'general') {
+      setGeneralMessages(prev => [...prev, userMessage]);
+    } else {
+      setRagMessages(prev => [...prev, userMessage]);
+    }
 
     try {
       const request: ChatRequest = {
         message,
-        sessionId: currentSession?.id,
+        sessionId: currentSession?.id?.toString(),
         chatType,
       };
 
@@ -66,10 +78,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         metadata: responseData.sources,
       };
       
-      setMessages(prev => [...prev, assistantMessage]);
+      // Add to appropriate message state based on chat type
+      if (chatType === 'general') {
+        setGeneralMessages(prev => [...prev, assistantMessage]);
+      } else {
+        setRagMessages(prev => [...prev, assistantMessage]);
+      }
       
       // Update current session if new one was created
-      if (responseData.sessionId && !currentSession) {
+      if (responseData.sessionId && (!currentSession || currentSession.chat_type !== chatType)) {
         setCurrentSession({
           id: responseData.sessionId,
           chat_type: chatType,
@@ -80,7 +97,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error sending message:', error);
       // Remove the user message on error
-      setMessages(prev => prev.slice(0, -1));
+      if (chatType === 'general') {
+        setGeneralMessages(prev => prev.slice(0, -1));
+      } else {
+        setRagMessages(prev => prev.slice(0, -1));
+      }
     } finally {
       setLoading(false);
     }
@@ -111,6 +132,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   const clearMessages = () => {
     setMessages([]);
+    setGeneralMessages([]);
+    setRagMessages([]);
+  };
+
+  // Get messages for current chat type
+  const getMessagesForChatType = (chatType: 'general' | 'custom') => {
+    return chatType === 'general' ? generalMessages : ragMessages;
+  };
+
+  // Clear messages for specific chat type
+  const clearMessagesForChatType = (chatType: 'general' | 'custom') => {
+    if (chatType === 'general') {
+      setGeneralMessages([]);
+    } else {
+      setRagMessages([]);
+    }
   };
 
   const value = {
@@ -123,6 +160,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     loadSessionMessages,
     createNewSession,
     clearMessages,
+    getMessagesForChatType,
+    clearMessagesForChatType,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

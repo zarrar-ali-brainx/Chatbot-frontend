@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { documentService } from '../services/api';
 import { Document } from '../types';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const Documents: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -55,15 +58,29 @@ const Documents: React.FC = () => {
     }
   };
 
-  const handleDeleteDocument = async (documentId: number) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) return;
+  const handleDeleteClick = (document: Document) => {
+    setDocumentToDelete(document);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!documentToDelete) return;
 
     try {
-      await documentService.deleteDocument(documentId);
-      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+      await documentService.deleteDocument(documentToDelete.id);
+      setDocuments(prev => prev.filter(doc => doc.id !== documentToDelete.id));
+      setShowDeleteModal(false);
+      setDocumentToDelete(null);
     } catch (err: any) {
       setError('Failed to delete document');
+      setShowDeleteModal(false);
+      setDocumentToDelete(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setDocumentToDelete(null);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -128,7 +145,17 @@ const Documents: React.FC = () => {
               />
             </svg>
             <span className="mt-2 text-sm text-gray-600">
-              {uploading ? 'Uploading...' : 'Click to upload or drag and drop'}
+              {uploading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Uploading and processing document...
+                </div>
+              ) : (
+                'Click to upload or drag and drop'
+              )}
             </span>
             <span className="text-xs text-gray-500">
               PDF, TXT, MD, DOCX up to 10MB
@@ -175,7 +202,7 @@ const Documents: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDeleteDocument(doc.id)}
+                  onClick={() => handleDeleteClick(doc)}
                   className="text-red-600 hover:text-red-800 text-sm font-medium"
                 >
                   Delete
@@ -185,6 +212,18 @@ const Documents: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Document"
+        message={`Are you sure you want to delete "${documentToDelete?.original_name}"? This action cannot be undone and will remove all associated data.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 };
