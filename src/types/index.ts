@@ -34,6 +34,12 @@ export interface ChatSession {
   chat_type: 'general' | 'custom';
   created_at: string;
   updated_at: string;
+  lastMessage?: {
+    id: number;
+    content: string;
+    role: string;
+    created_at: string;
+  };
 }
 
 export interface Document {

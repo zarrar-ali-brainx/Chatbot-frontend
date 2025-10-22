@@ -72,7 +72,12 @@ export const chatService = {
   },
 
   getSessionMessages: async (sessionId: number) => {
-    const response = await api.get(`/chat/sessions/${sessionId}/messages`);
+    const response = await api.get(`/chat/sessions/${sessionId}`);
+    return response.data;
+  },
+
+  deleteSession: async (sessionId: number) => {
+    const response = await api.delete(`/chat/sessions/${sessionId}`);
     return response.data;
   },
 };
