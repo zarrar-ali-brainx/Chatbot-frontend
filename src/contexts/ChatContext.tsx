@@ -7,6 +7,7 @@ interface ChatContextType {
   sessions: ChatSession[];
   currentSession: ChatSession | null;
   loading: boolean;
+  isGenerating: boolean;
   sendMessage: (message: string, chatType: 'general' | 'custom') => Promise<void>;
   loadSessions: () => Promise<void>;
   loadSessionMessages: (sessionId: number) => Promise<void>;
@@ -16,9 +17,11 @@ interface ChatContextType {
   getMessagesForChatType: (chatType: 'general' | 'custom') => ChatMessage[];
   clearMessagesForChatType: (chatType: 'general' | 'custom') => void;
   deleteSession: (sessionId: number) => Promise<void>;
+  cancelRequest: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
 
 export const useChat = () => {
   const context = useContext(ChatContext);
@@ -41,8 +44,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   // Separate message states for different chat types
   const [generalMessages, setGeneralMessages] = useState<ChatMessage[]>([]);
   const [ragMessages, setRagMessages] = useState<ChatMessage[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const sendMessage = async (message: string, chatType: 'general' | 'custom') => {
+    const controller = new AbortController();
+    setAbortController(controller);
+    setIsGenerating(true);
     setLoading(true);
     
     // Add user message to UI immediately
@@ -67,8 +75,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       };
 
       const response = chatType === 'general' 
-        ? await chatService.sendGeneralMessage(request)
-        : await chatService.sendRagMessage(request);
+        ? await chatService.sendGeneralMessage(request, controller.signal)
+        : await chatService.sendRagMessage(request, controller.signal);
 
         const responseData = response as { response: string; sessionId: number; sources?: any[]};
 
@@ -100,15 +108,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         loadSessions();
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      // Remove the user message on error
-      if (chatType === 'general') {
-        setGeneralMessages(prev => prev.slice(0, -1));
+      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError')) {
+        console.log('Request cancelled by user');
       } else {
-        setRagMessages(prev => prev.slice(0, -1));
+        console.error('Error sending message:', error);
+        // Show error message to user
+        const errorMessage: ChatMessage = {
+          role: 'assistant',
+          content: 'Sorry, there was an error processing your request. Please try again.',
+          timestamp: new Date().toISOString(),
+        };
+        
+        if (chatType === 'general') {
+          setGeneralMessages(prev => [...prev, errorMessage]);
+        } else {
+          setRagMessages(prev => [...prev, errorMessage]);
+        }
+      }
+      // Remove the user message on error (except for cancellation)
+      if (!(error instanceof Error && (error.name === 'AbortError' || error.name === 'CanceledError'))) {
+        if (chatType === 'general') {
+          setGeneralMessages(prev => prev.slice(0, -1));
+        } else {
+          setRagMessages(prev => prev.slice(0, -1));
+        }
       }
     } finally {
       setLoading(false);
+      setIsGenerating(false);
+      setAbortController(null);
     }
   };
 
@@ -209,11 +237,21 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     }
   }, [currentSession]);
 
+  const cancelRequest = useCallback(() => {
+    if (abortController) {
+      abortController.abort();
+      setIsGenerating(false);
+      setLoading(false);
+      setAbortController(null);
+    }
+  }, [abortController]);
+
   const value = {
     messages,
     sessions,
     currentSession,
     loading,
+    isGenerating,
     sendMessage,
     loadSessions,
     loadSessionMessages,
@@ -223,6 +261,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     getMessagesForChatType,
     clearMessagesForChatType,
     deleteSession,
+    cancelRequest,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
