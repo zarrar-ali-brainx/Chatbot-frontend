@@ -56,13 +56,13 @@ export const authService = {
 };
 
 export const chatService = {
-  sendGeneralMessage: async (data: ChatRequest) => {
-    const response = await api.post('/chat/general', data);
+  sendGeneralMessage: async (data: ChatRequest, signal?: AbortSignal) => {
+    const response = await api.post('/chat/general', data, { signal: signal, timeout: 30000 } as any);
     return response.data;
   },
 
-  sendRagMessage: async (data: ChatRequest) => {
-    const response = await api.post('/chat/rag', data);
+  sendRagMessage: async (data: ChatRequest, signal?: AbortSignal) => {
+    const response = await api.post('/chat/rag', data, { signal: signal, timeout: 30000 } as any);
     return response.data;
   },
 

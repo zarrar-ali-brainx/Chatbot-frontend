@@ -14,6 +14,8 @@ const Chat: React.FC = () => {
   
   const { 
     loading, 
+    isGenerating,
+    cancelRequest,
     sendMessage, 
     getMessagesForChatType, 
     clearMessagesForChatType,
@@ -233,6 +235,17 @@ const Chat: React.FC = () => {
             className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             disabled={loading}
           />
+          {isGenerating && (
+            <button
+              onClick={cancelRequest}
+              className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 6l12 12M6 18L18 6" />
+        </svg>
+        <span>Stop</span>
+            </button>
+          )}
           <button
             type="submit"
             disabled={!message.trim() || loading}
